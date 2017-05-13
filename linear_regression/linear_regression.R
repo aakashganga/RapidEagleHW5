@@ -137,6 +137,64 @@ coef(summary(sat.voting.mod))
 ##   repeat steps 1-3. Is this model significantly better than the model
 ##   with /metro/ as the only predictor?
 
+par(mar = c(4, 4, 2, 2), mfrow = c(1, 1)) #optional
+with(states.data,plot(x = metro, y = energy,pch=16))
+
+# From the plot, it appears that energy consumed increases as the percentage of the
+# residents living in metro until it reaches a certain energy consumption and then
+# drops. The relationship is parabolic. 
+
+# Let us fit a regression on the data without transforming the data
+energy.mod <- lm(energy ~ metro, data = states.data)
+summary(energy.mod)
+
+# As expected, the adjusted R square of this model is only 9.7%. We can do better
+# with transformations
+
+# for a parabolic relationship, we can do two different transformations.
+# 1. sqrt of the response term and the square the predictor variables
+# 2. add a square of the predictor variable term in addition to the predictor variable
+# itself.
+
+# Here we evaluated both and went with the first one.
+
+energy.mod2 <- lm(sqrt(energy) ~ (metro)^2 , data = states.data)
+summary(energy.mod2)
+
+# From the summary above, you can see that we improved the adjusted R^2 from
+# 9.7% to 11.9% with transformations. 
+
+# But, clearly, the R^2 is still small. We know from the plot that linear regression
+# may not be the best option for expressing the relationship between energy and metro
+# A polynomial regression would be the best option.
+
+# Let us plot the model to verify the  deviation from the modeling assumptions
+
+par(mar = c(4, 4, 2, 2), mfrow = c(1, 2)) #optional
+plot(energy.mod2, which = c(1, 2)) # "which" argument optional
+
+# As you can see from the residual vs. fitted plot, we see a trend in the residuals.
+# This indicates that our model deviated from the linear regression assumptions
+# The Q-Q plot also shows that and there are clear deviators; namely observations
+# 19, 44 and 51
+
+
+# Now, we will add a few more terms to see if the resulting model is significantly
+# better than the existing model
+
+energy.morevars.mod <-  update(energy.mod2,. ~ . + expense + house + senate)
+summary(energy.morevars.mod)                      
+
+# With the addition of new variables, our adusted R^2 improved to 36.92%. 
+# A signficant improvement indeed.
+
+# Let us plot the new model
+plot(energy.morevars.mod, which = c(1, 2)) # "which" argument optional
+
+# Still the same story, but, a slightly better than the energy.mod model
+# Perhaps, we could get a better model plot after eliminating the 3 problematic 
+# observations.
+
 ## Interactions and factors
 ## ══════════════════════════
 
@@ -203,3 +261,33 @@ coef(summary(lm(csat ~ C(region, contr.helmert),
 
 ##   2. Try adding region to the model. Are there significant differences
 ##      across the four regions?
+
+# Let us add an interaction term to the model created in exercise 1.
+# To do so, we need to undestand the correlations between the predictor variables
+# from model 1
+# cor.plot from corrplot package comes handy
+library(corrplot)
+cols = c('metro','expense','house','senate')
+states.data[,cols] = sapply(states.data[,cols],function(x) as.numeric(x))
+m <- cor(states.data[,cols],use="pairwise.complete.obs")
+par(mar = c(4, 4, 2, 2), mfrow = c(1, 1)) #optional
+corrplot(m,method="number")
+
+# There seems to be a high correlation between senate and house. So, let us add
+# the interaction term between those variables
+
+energy.morevars.inter.mod <- update(energy.morevars.mod,.~.+house*senate)
+summary(energy.morevars.inter.mod)
+
+# As you can see the interaction term seemed to improve the model.
+
+# Now, let us try to add region. Remember, region is a factor variable, so, the 
+# the other regions will have coefficients that are with respect to the first 
+# value in region i.e. West
+
+energy.morevars.inter.region.mod <- update(energy.morevars.inter.mod, .~. + region)
+summary(energy.morevars.inter.region.mod)
+
+# As you can see from the coefficients of various regions, there are significant
+# differences among the 4 regions.  Remember for region = West, the intercept
+# is the coefficent
