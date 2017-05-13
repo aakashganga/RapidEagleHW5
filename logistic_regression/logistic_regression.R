@@ -23,7 +23,7 @@
 ##         health objectives.
 
 ##   Load the National Health Interview Survey data:
-
+setwd('~./Rapid Eagle/RapidEagleHW5/logistic_regression')
 NH11 <- readRDS("dataSets/NatHealth2011.rds")
 labs <- attributes(NH11)$labels
 
@@ -106,3 +106,45 @@ plot(allEffects(hyp.out))
 ##   Note that the data is not perfectly clean and ready to be modeled. You
 ##   will need to clean up at least some of the variables before fitting
 ##   the model.
+
+# run our regression model
+everwrk.glm <- glm(everwrk~age_p+r_maritl,
+               data=NH11, family="binomial")
+coef(summary(everwrk.glm))
+
+
+# convert the coeffients to odds ratios for better interpretability
+everwrk.glm.tab <- coef(summary(everwrk.glm))
+everwrk.glm.tab[, "Estimate"] <- exp(coef(everwrk.glm))
+everwrk.glm.tab
+
+
+# Let us see the distribution of marital status. We will use dplyr for this
+library(dplyr)
+NH11 %>% group_by(r_maritl) %>% summarise(tot=n())
+
+# As you can see, we have 10 levels in r_maritl, but only 8 have any data.
+
+# So, remove unused levels using droplevels function
+NH11$r_maritl <- droplevels(NH11$r_maritl)
+
+maritallevels = levels(NH11$r_maritl)
+
+# Create a dataset with predictors set at desired levels
+predDat <- with(NH11,
+                expand.grid(age_p = 40,
+                            r_maritl = maritallevels))
+# predict hypertension at those levels
+cbind(predDat, predict(everwrk.glm, type = "response",
+                       se.fit = TRUE, interval="confidence",
+                       newdata = predDat))
+
+# At age 40, The probability that someone will do work at of someone 
+# who was Never married is 21.8%. After marrying with spouse in household, the
+# probability drops to 16.4%
+
+
+# Let us plot to see the effects
+library(effects)
+plot(allEffects(everwrk.glm))
+
